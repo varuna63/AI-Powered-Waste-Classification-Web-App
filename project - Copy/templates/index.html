@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waste Classification</title>
+<style>
+body { font-family: Arial,sans-serif; background:#f4f8f9; margin:0; padding:0; }
+header { background:#4caf50; color:white; padding:1rem 2rem; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; }
+header .logo { font-weight:700; font-size:1.5rem; }
+nav ul { list-style:none; display:flex; gap:1.5rem; margin:0; padding:0; }
+nav ul li:hover { text-decoration:underline; cursor:pointer; }
+.hero { display:flex; flex-direction:column; align-items:center; text-align:center; padding:4rem 2rem; background:#81c784; color:white; }
+.hero h1 { font-size:3rem; margin-bottom:1rem; }
+.hero p { font-size:1.25rem; margin-bottom:2rem; }
+.cta-buttons button { background:#66bb6a; border:none; padding:0.75rem 1.5rem; margin:0 0.5rem; border-radius:6px; cursor:pointer; color:white; font-weight:700; }
+.cta-buttons button:hover { background:#4caf50; }
+.features { max-width:900px; margin:3rem auto; padding:0 1rem; text-align:center; }
+.upload-section { max-width:900px; margin:2rem auto; padding:1rem; background:white; border-radius:12px; box-shadow:0 6px 12px rgba(0,0,0,0.1); display:none; }
+.drop-area { border:3px dashed #4caf50; padding:1.5rem; text-align:center; border-radius:10px; cursor:pointer; font-weight:600; color:#4caf50; }
+.drop-area.dragover { background-color:#c8e6c9; border-color:#388e3c; }
+.preview-container { margin-top:1rem; display:flex; flex-wrap:wrap; gap:1rem; justify-content:center; }
+.preview-image-wrapper { position:relative; width:140px; height:140px; border-radius:10px; overflow:hidden; box-shadow:0 4px 8px rgba(0,0,0,0.15); }
+.preview-image-wrapper img { width:100%; height:100%; object-fit:cover; }
+.delete-btn { position:absolute; top:6px; right:6px; background:rgba(183,28,28,0.8); border:none; color:white; border-radius:50%; width:26px; height:26px; font-weight:700; cursor:pointer; }
+.delete-btn:hover { background:rgba(255,0,0,0.9); }
+.submit-btn { margin-top:1rem; background:#4caf50; color:white; border:none; padding:0.75rem 2rem; border-radius:6px; font-weight:700; cursor:pointer; display:block; margin-left:auto; margin-right:auto; }
+.submit-btn:disabled { background:#a5d6a7; cursor:not-allowed; }
+#videoFeed { width:100%; max-width:640px; margin-top:1rem; border-radius:10px; border:2px solid #ddd; display:none; }
+.control-buttons { margin-top:1rem; display:flex; justify-content:center; gap:1rem; }
+.control-buttons button { padding:0.75rem 1.5rem; font-weight:700; border:none; border-radius:6px; cursor:pointer; }
+#startCameraBtn { background:#4caf50; color:white; }
+#stopCameraBtn { background:#f44336; color:white; display:none; }
+#captureBtn { background:#2196f3; color:white; display:none; }
+.result { font-weight:700; color:green; text-align:center; margin-top:5px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">♻ Waste Classifier</div>
+  <nav>
+    <ul>
+      <li><a href="#features">About</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="hero-content">
+    <h1>Sort waste, save the planet!</h1>
+    <p>Use AI to classify garbage and recycle smarter.</p>
+    <div class="cta-buttons">
+      <button id="singleUploadBtn">Single Image Upload</button>
+      <button id="batchUploadBtn">Batch Image Upload</button>
+      <button id="liveDetectionBtn">Live Detection</button>
+    </div>
+  </div>
+</section>
+
+<section id="features" class="features">
+  <h2>Features</h2>
+  <p>Classify waste into plastics, metals, glass, organic, and more. Upload single or multiple images, or use live camera detection!</p>
+</section>
+
+<form id="uploadForm" enctype="multipart/form-data">
+
+<section id="singleUpload" class="upload-section">
+  <h3>Single Image Upload</h3>
+  <div id="singleDropArea" class="drop-area">Drag & Drop or Click to Upload Single Image</div>
+  <input type="file" id="singleFileInput" accept="image/*" style="display:none;">
+  <div class="preview-container" id="singlePreview"></div>
+  <button type="button" class="submit-btn" id="singleSubmitBtn" disabled>Classify Image</button>
+</section>
+
+<section id="batchUpload" class="upload-section">
+  <h3>Batch Image Upload</h3>
+  <div id="batchDropArea" class="drop-area">Drag & Drop or Click to Upload Multiple Images</div>
+  <input type="file" id="batchFileInput" accept="image/*" multiple style="display:none;">
+  <div class="preview-container" id="batchPreview"></div>
+  <button type="button" class="submit-btn" id="batchSubmitBtn" disabled>Classify Images</button>
+</section>
+
+</form>
+
+<section id="liveDetection" class="upload-section">
+  <h3>Live Detection</h3>
+  <video id="videoFeed" playsinline muted autoplay></video>
+  <div class="control-buttons">
+    <button id="startCameraBtn">Start Camera</button>
+    <button id="stopCameraBtn">Stop Camera</button>
+    <button id="captureBtn">Capture & Classify</button>
+  </div>
+  <div id="cameraResult"></div>
+</section>
+
+<script>
+// Section toggles
+const singleUploadBtn = document.getElementById('singleUploadBtn');
+const batchUploadBtn = document.getElementById('batchUploadBtn');
+const liveDetectionBtn = document.getElementById('liveDetectionBtn');
+const singleSection = document.getElementById('singleUpload');
+const batchSection = document.getElementById('batchUpload');
+const liveDetectionSection = document.getElementById('liveDetection');
+
+function hideAllSections() {
+  singleSection.style.display='none';
+  batchSection.style.display='none';
+  liveDetectionSection.style.display='none';
+  stopCamera();
+}
+
+singleUploadBtn.addEventListener('click',()=>{ hideAllSections(); singleSection.style.display='block'; });
+batchUploadBtn.addEventListener('click',()=>{ hideAllSections(); batchSection.style.display='block'; });
+liveDetectionBtn.addEventListener('click',()=>{ hideAllSections(); liveDetectionSection.style.display='block'; });
+
+// Preview + delete
+function createPreviewImage(file, container, input, submitBtn) {
+  const wrapper=document.createElement('div'); wrapper.className='preview-image-wrapper'; wrapper.file=file;
+  const img=document.createElement('img'); img.src=URL.createObjectURL(file); img.onload=()=>URL.revokeObjectURL(img.src);
+  const deleteBtn=document.createElement('button'); deleteBtn.className='delete-btn'; deleteBtn.innerText='×';
+  deleteBtn.onclick=()=>{ wrapper.remove(); updateFiles(input,wrapper.file); toggleSubmitButton(input,submitBtn); };
+  wrapper.appendChild(img); wrapper.appendChild(deleteBtn); container.appendChild(wrapper);
+}
+function updateFiles(input,fileToRemove){
+  const dt=new DataTransfer(); Array.from(input.files).filter(f=>f!==fileToRemove).forEach(f=>dt.items.add(f));
+  input.files=dt.files;
+}
+function toggleSubmitButton(input,btn){ btn.disabled = !input.files.length; }
+
+function setupFileHandler(dropArea,fileInput,previewContainer,submitBtn){
+  dropArea.addEventListener('click',()=>fileInput.click());
+  ['dragover','dragenter'].forEach(e=>dropArea.addEventListener(e,ev=>{ ev.preventDefault(); dropArea.classList.add('dragover'); }));
+  ['dragleave','drop'].forEach(e=>dropArea.addEventListener(e,ev=>{ ev.preventDefault(); dropArea.classList.remove('dragover'); }));
+  dropArea.addEventListener('drop', ev=>{ fileInput.files=ev.dataTransfer.files; handleFiles(fileInput,previewContainer,submitBtn); });
+  fileInput.addEventListener('change',()=>handleFiles(fileInput,previewContainer,submitBtn));
+  function handleFiles(input,container,submitBtn){
+    container.innerHTML=''; Array.from(input.files).forEach(f=>createPreviewImage(f,container,input,submitBtn));
+    toggleSubmitButton(input,submitBtn);
+  }
+}
+
+setupFileHandler(document.getElementById('singleDropArea'), document.getElementById('singleFileInput'), document.getElementById('singlePreview'), document.getElementById('singleSubmitBtn'));
+setupFileHandler(document.getElementById('batchDropArea'), document.getElementById('batchFileInput'), document.getElementById('batchPreview'), document.getElementById('batchSubmitBtn'));
+
+// Single classify
+document.getElementById('singleSubmitBtn').addEventListener('click',async()=>{
+  const input=document.getElementById('singleFileInput'); if(!input.files.length) return;
+  const formData=new FormData(); formData.append('file',input.files[0]);
+  const res=await fetch('/predict',{method:'POST',body:formData});
+  const data=await res.json();
+  const resultDiv=document.createElement('p'); resultDiv.className='result'; resultDiv.textContent=`✅ Predicted: ${data.prediction}`;
+  document.getElementById('singlePreview').appendChild(resultDiv);
+});
+
+// Batch classify
+document.getElementById('batchSubmitBtn').addEventListener('click',async()=>{
+  const input=document.getElementById('batchFileInput'); if(!input.files.length) return;
+  const formData=new FormData(); Array.from(input.files).forEach(f=>formData.append('files',f));
+  const res=await fetch('/predict_batch',{method:'POST',body:formData});
+  const results=await res.json();
+  const previewContainer=document.getElementById('batchPreview');
+  Array.from(previewContainer.children).forEach(wrapper=>{
+    const oldRes=wrapper.querySelector('.result'); if(oldRes) oldRes.remove();
+  });
+  Array.from(input.files).forEach((file,i)=>{
+    const wrapper=Array.from(previewContainer.children).find(w=>w.file===file);
+    if(wrapper){
+      const resultDiv=document.createElement('p'); resultDiv.className='result'; resultDiv.textContent=`📷 ${results[i].prediction}`;
+      wrapper.appendChild(resultDiv);
+    }
+  });
+});
+
+// Camera
+const startCameraBtn=document.getElementById('startCameraBtn');
+const stopCameraBtn=document.getElementById('stopCameraBtn');
+const captureBtn=document.getElementById('captureBtn');
+const videoFeed=document.getElementById('videoFeed');
+const cameraResult=document.getElementById('cameraResult');
+let stream;
+
+startCameraBtn.addEventListener('click',async()=>{
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:true});
+    videoFeed.srcObject=stream; videoFeed.style.display='block';
+    startCameraBtn.style.display='none'; stopCameraBtn.style.display='inline-block'; captureBtn.style.display='inline-block';
+  } catch(err){ alert("Cannot access camera."); console.error(err);}
+});
+
+stopCameraBtn.addEventListener('click',()=>stopCamera());
+
+captureBtn.addEventListener('click',async()=>{
+  const canvas=document.createElement('canvas');
+  canvas.width=videoFeed.videoWidth; canvas.height=videoFeed.videoHeight;
+  const ctx=canvas.getContext('2d'); ctx.drawImage(videoFeed,0,0);
+  canvas.toBlob(async(blob)=>{
+    const formData=new FormData(); formData.append('file',blob,'camera.jpg');
+    const res=await fetch('/predict',{method:'POST',body:formData});
+    const data=await res.json();
+    cameraResult.innerHTML=`✅ Camera Prediction: ${data.prediction}`;
+  },'image/jpeg');
+});
+
+function stopCamera(){
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); videoFeed.srcObject=null; videoFeed.style.display='none'; startCameraBtn.style.display='inline-block'; stopCameraBtn.style.display='none'; captureBtn.style.display='none'; cameraResult.innerHTML=''; }
+}
+</script>
+
+</body>
+</html>
